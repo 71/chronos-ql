@@ -23,7 +23,7 @@ db.provideToResolver();
   })
 
   // Initialize database
-  await db.load()
+  db.load()
 
   // Auto-refresh database every day
   setInterval(async () => {
@@ -39,9 +39,13 @@ db.provideToResolver();
     graphiql: true
   }))
 
-  app.use('/refresh', async () => {
-    if (!db.isLoading)
-      await db.load()
+  app.use('/refresh', async (_, res) => {
+    if (db.isLoading)
+      return res.send(400, 'Cannot refresh.')
+    
+    db.load()
+
+    return res.send(200, 'Refreshing...')
   })
 
   app.listen(process.env.PORT || 443)
