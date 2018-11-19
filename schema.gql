@@ -8,6 +8,7 @@ type Course {
   duration: Int!
   name: String!
   locations: [CourseLocation!]!
+  staff: [StaffMember!]!
   end: DateTime!
 }
 
@@ -26,10 +27,21 @@ type Group {
 
 type Query {
   groups(name: [String!]): [Group!]!
+  classes(
+    to: DateTime
+    from: DateTime
+
+    # Group name
+    name: String!
+  ): [Course!]!
 }
 
 type ScheduleDay {
   courses: [Course!]!
   dayStart: DateTime!
   dayEnd: DateTime!
+}
+
+type StaffMember {
+  name: String!
 }

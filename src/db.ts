@@ -20,6 +20,24 @@ export class CourseLocation {
 }
 
 @ObjectType()
+export class StaffMember {
+  @Field()
+  name: string;
+
+  static isSameStaff(as: StaffMember[], bs: StaffMember[]): boolean {
+    if (as.length != bs.length)
+      return false
+    
+    for (let i = 0; i < as.length; i++) {
+      if (as[i].name != bs[i].name)
+        return false
+    }
+
+    return true
+  }
+}
+
+@ObjectType()
 export class Course {
   @Field()
   start: Date;
@@ -32,6 +50,9 @@ export class Course {
 
   @Field(type => [CourseLocation])
   locations: CourseLocation[] = [];
+
+  @Field(type => [StaffMember])
+  staff: StaffMember[] = [];
 
   @Field()
   get end(): Date {
@@ -100,9 +121,10 @@ export class Database {
         course.start     = new Date(Date.parse(dayCourse.BeginDate))
         course.duration  = dayCourse.Duration
         course.locations = dayCourse.RoomList.map(room => <CourseLocation>{ name: room.Name })
+        course.staff     = dayCourse.StaffList.map(member => <StaffMember>{ name: member.Name })
 
         // Merge course with previous one if needed
-        const prev = day.courses.length ? day.courses[day.courses.length - 1] : null
+        const prev  = day.courses.length ? day.courses[day.courses.length - 1] : null
         const merge = prev                                            &&
                       prev.end.valueOf()  === course.start.valueOf()  &&
                       prev.name           === course.name             &&
@@ -173,7 +195,9 @@ export class ChronosResolver {
   ) {}
 
   @Query(returns => [Group])
-  groups(@Arg("name", type => [String], { nullable: true }) name: string[] | undefined): Group[] {
+  groups(
+    @Arg("name", type => [String], { nullable: true }) name: string[] | undefined
+  ): Group[] {
     if (name == undefined) {
       return this.db.savedGroups
     } else {
@@ -181,8 +205,31 @@ export class ChronosResolver {
     }
   }
 
+  @Query(returns => [Course])
+  classes(
+    @Arg("name", { description: 'Group name'}) name: string,
+    @Arg("from", { nullable: true })           from: Date | undefined,
+    @Arg("to"  , { nullable: true })           to  : Date | undefined
+  ) : Course[] {
+    const group = this.db.savedGroups.find(x => x.name == name)
+
+    if (!group) return []
+
+    const allClasses = []
+
+    for (const day of this.schedule(group, from, to)) {
+      allClasses.push(...day.courses)
+    }
+
+    return allClasses
+  }
+
   @FieldResolver(of => [ScheduleDay])
-  schedule(@Root() group: Group, @Arg("from", { nullable: true }) from: Date | undefined, @Arg("to", { nullable: true }) to: Date | undefined): ScheduleDay[] {
+  schedule(
+    @Root()                          group: Group,
+    @Arg("from", { nullable: true }) from : Date | undefined,
+    @Arg("to"  , { nullable: true }) to   : Date | undefined
+  ): ScheduleDay[] {
     if (!from) {
       from = new Date()
       from = new Date(from.getFullYear(), from.getMonth(), from.getDate())
