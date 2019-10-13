@@ -255,7 +255,7 @@ export class ChronosResolver {
       from = new Date(from.getFullYear(), from.getMonth(), from.getDate())
     }
     if (!to) {
-      to = new Date(from.valueOf() + 3_600_000 * 24 * 2)
+      to = new Date(from.valueOf() + 3_600_000 * 24 * 7)
     }
 
     return group.schedule.filter(x => x.dayStart >= from && x.dayEnd <= to)
