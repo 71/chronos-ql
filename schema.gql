@@ -3,45 +3,103 @@
 # !!!   DO NOT MODIFY THIS FILE BY YOURSELF   !!!
 # -----------------------------------------------
 
+# An instance of a class in a day.
 type Course {
+  # The exact start date and time of the class.
   start: DateTime!
+
+  # The duration of the class in minutes.
   duration: Int!
+
+  # The name of the class.
   name: String!
+
+  # The location of the class.
   locations: [CourseLocation!]!
+
+  # The staff member teaching the class.
   staff: [StaffMember!]!
+
+  # The expected end date and time of the class, computed from its start date and duration.
   end: DateTime!
 }
 
+# The location (usually, room) of a class.
 type CourseLocation {
+  # The human-readable name of the room.
   name: String!
 }
 
 # The javascript `Date` as string. Type represents date and time as the ISO Date string.
 scalar DateTime
 
+# A group of students used to organize classes.
 type Group {
+  # The name of the group.
   name: String!
+
+  # The identifier of the group, as used internally by Chronos.
   id: Int!
-  schedule(to: DateTime, from: DateTime): [ScheduleDay!]!
+
+  # Returns the schedule of the group in the given time range.
+  schedule(
+    # The end date, or a week from the start date if no value is provided.
+    to: DateTime
+
+    # The start date, or today if no value is provided.
+    from: DateTime
+  ): [ScheduleDay!]!
 }
 
 type Query {
-  groups(name: [String!]): [Group!]!
+  # Returns the list of groups matching the given name(s), or all groups if no name is provided.
+  groups(
+    # The name(s) of the group(s) to return.
+    name: [String!]
+  ): [Group!]!
+
+  # Returns the list of classes the given group will have in the given time range.
   classes(
+    # The end date, or a week from the start date if no value is provided.
     to: DateTime
+
+    # The start date, or today if no value is provided.
     from: DateTime
 
-    # Group name
+    # The name of the group to return.
     name: String!
   ): [Course!]!
+
+  # Returns the current status of the server.
+  status: ServerStatus!
 }
 
+# A day of classes.
 type ScheduleDay {
+  # The list of all classes of the day.
   courses: [Course!]!
+
+  # The date and time of the start of the first class of the day.
   dayStart: DateTime!
+
+  # The date and time of the end of the last class of the day.
   dayEnd: DateTime!
 }
 
+# The current status of the GraphQL server.
+type ServerStatus {
+  # A boolean that indicates if the GraphQL is currently reloading its data.
+  loading: Boolean!
+
+  # The date and time of the last time a update was started.
+  lastUpdateStartTime: DateTime!
+
+  # The date and time of the end of the last update.
+  lastUpdateEndTime: DateTime!
+}
+
+# A member of the staff; usually, a teacher.
 type StaffMember {
+  # The full-name of the member of the staff.
   name: String!
 }

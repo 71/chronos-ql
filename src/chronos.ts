@@ -1,16 +1,12 @@
 import fetch from 'node-fetch'
 
 export default class Chronos {
-  constructor() {
-
-  }
-
   get(endpoint: string) {
     return fetch(`http://v2.webservices.chronos.epita.net/api/v2${endpoint}`, {
       headers: {
         'Accept': 'application/json',
-        'Auth-Token': '0bffc5524976f8e833a6df954ca01b06'
-      }
+        'Auth-Token': '0bffc5524976f8e833a6df954ca01b06',
+      },
     })
   }
 
@@ -36,7 +32,7 @@ export default class Chronos {
   }
 
   static getWeekId(date: Date) {
-    const origin   = Date.UTC(2014, 7, 24)
+    const origin   = Date.UTC(2019, 7, 26)
     const timespan = date.getTime() - origin
 
     const divider = 7 * 24 * 3600 * 1000

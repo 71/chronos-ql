@@ -49,7 +49,7 @@ db.provideToResolver();
   app.use('/refresh', async (_, res) => {
     if (db.isLoading)
       return res.send(400, 'Cannot refresh.')
-    
+
     db.load()
 
     return res.send(200, 'Refreshing...')

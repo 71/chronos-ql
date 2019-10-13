@@ -6,11 +6,12 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "lib": [
-      "es2016", "esnext.asynciterable"
-    ]
+      "es2016",
+      "esnext.asynciterable",
+    ],
   },
   "exclude": [
     "node_modules",
-    "**/node_modules/*"
-  ]
+    "**/node_modules/*",
+  ],
 }

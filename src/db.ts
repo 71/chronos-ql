@@ -1,15 +1,15 @@
 import Chronos from './chronos'
-import { ObjectType, Field, Int, Resolver, Query, Arg, Root, FieldResolver, useContainer, Args } from 'type-graphql'
+import { ObjectType, Field, Int, Resolver, Query, Arg, Root, FieldResolver, useContainer } from 'type-graphql'
 
-@ObjectType()
+@ObjectType({ description: 'The location (usually, room) of a class.' })
 export class CourseLocation {
-  @Field()
+  @Field({ description: 'The human-readable name of the room.' })
   name: string;
 
   static isSameLocation(as: CourseLocation[], bs: CourseLocation[]): boolean {
     if (as.length != bs.length)
       return false
-    
+
     for (let i = 0; i < as.length; i++) {
       if (as[i].name != bs[i].name)
         return false
@@ -19,15 +19,15 @@ export class CourseLocation {
   }
 }
 
-@ObjectType()
+@ObjectType({ description: 'A member of the staff; usually, a teacher.' })
 export class StaffMember {
-  @Field()
+  @Field({ description: 'The full-name of the member of the staff.' })
   name: string;
 
   static isSameStaff(as: StaffMember[], bs: StaffMember[]): boolean {
     if (as.length != bs.length)
       return false
-    
+
     for (let i = 0; i < as.length; i++) {
       if (as[i].name != bs[i].name)
         return false
@@ -37,58 +37,73 @@ export class StaffMember {
   }
 }
 
-@ObjectType()
+@ObjectType({ description: 'An instance of a class in a day.' })
 export class Course {
-  @Field()
+  @Field({ description: 'The exact start date and time of the class.' })
   start: Date;
 
-  @Field(type => Int)
+  @Field(type => Int, { description: 'The duration of the class in minutes.' })
   duration: number;
 
-  @Field()
+  @Field({ description: 'The name of the class.' })
   name: string;
 
-  @Field(type => [CourseLocation])
+  @Field(type => [CourseLocation], { description: 'The location of the class.' })
   locations: CourseLocation[] = [];
 
-  @Field(type => [StaffMember])
+  @Field(type => [StaffMember], { description: 'The staff member teaching the class.' })
   staff: StaffMember[] = [];
 
-  @Field()
+  @Field({ description: 'The expected end date and time of the class, computed from its start date and duration.' })
   get end(): Date {
     return new Date(this.start.valueOf() + 60_000 * this.duration)
   }
 }
 
-@ObjectType()
+@ObjectType({ description: 'A day of classes.' })
 export class ScheduleDay {
-  @Field(type => [Course])
+  @Field(type => [Course], { description: 'The list of all classes of the day.' })
   courses: Course[] = []
 
-  @Field()
+  @Field({ description: 'The date and time of the start of the first class of the day.' })
   get dayStart(): Date {
     return this.courses[0].start
   }
 
-  @Field()
+  @Field({ description: 'The date and time of the end of the last class of the day.'})
   get dayEnd(): Date {
     return this.courses[this.courses.length - 1].end
   }
 }
 
-@ObjectType()
+@ObjectType({ description: 'A group of students used to organize classes.' })
 export class Group {
-  @Field()
+  @Field({ description: 'The name of the group.' })
   name: string;
 
-  @Field(type => Int)
+  @Field(type => Int, { description: 'The identifier of the group, as used internally by Chronos.' })
   id: number;
 
   schedule: ScheduleDay[] = [];
 }
 
+@ObjectType({ description: 'The current status of the GraphQL server.' })
+export class ServerStatus {
+  @Field({ description: 'A boolean that indicates if the GraphQL is currently reloading its data.' })
+  loading: boolean;
+
+  @Field({ description: 'The date and time of the last time a update was started.' })
+  lastUpdateStartTime: Date;
+
+  @Field({ description: 'The date and time of the end of the last update.' })
+  lastUpdateEndTime: Date;
+}
+
 export class Database {
   loading: number = 0;
+
+  startedLoading: Date = new Date(0);
+  finishedLoading: Date = new Date(0);
 
   chronos: Chronos = new Chronos();
   savedGroups: Group[] = [];
@@ -129,7 +144,7 @@ export class Database {
                       prev.end.valueOf()  === course.start.valueOf()  &&
                       prev.name           === course.name             &&
                       CourseLocation.isSameLocation(prev.locations, course.locations)
-        
+
       if (merge) {
           prev.duration += course.duration
         } else {
@@ -160,6 +175,9 @@ export class Database {
   }
 
   async load(waitTime = 10_000) {
+    if (waitTime === 10_000)
+      this.startedLoading = new Date(Date.now())
+
     this.loading++
 
     console.log('Refreshing data...')
@@ -184,7 +202,9 @@ export class Database {
     this.savedGroups = groups
 
     console.log('Done refreshing data.')
+
     this.loading--
+    this.finishedLoading = new Date(Date.now())
   }
 }
 
@@ -194,9 +214,9 @@ export class ChronosResolver {
     private readonly db: Database
   ) {}
 
-  @Query(returns => [Group])
+  @Query(returns => [Group], { description: 'Returns the list of groups matching the given name(s), or all groups if no name is provided.' })
   groups(
-    @Arg("name", type => [String], { nullable: true }) name: string[] | undefined
+    @Arg("name", type => [String], { nullable: true, description: 'The name(s) of the group(s) to return.' }) name: string[] | undefined,
   ): Group[] {
     if (name == undefined) {
       return this.db.savedGroups
@@ -205,11 +225,11 @@ export class ChronosResolver {
     }
   }
 
-  @Query(returns => [Course])
+  @Query(returns => [Course], { description: 'Returns the list of classes the given group will have in the given time range.' })
   classes(
-    @Arg("name", { description: 'Group name'}) name: string,
-    @Arg("from", { nullable: true })           from: Date | undefined,
-    @Arg("to"  , { nullable: true })           to  : Date | undefined
+    @Arg("name", { description: 'The name of the group whose classes will be returned.' })                                name: string,
+    @Arg("from", { nullable: true, description: 'The start date, or today if no value is provided.' })                    from: Date | undefined,
+    @Arg("to"  , { nullable: true, description: 'The end date, or a week from the start date if no value is provided.' }) to  : Date | undefined,
   ) : Course[] {
     const group = this.db.savedGroups.find(x => x.name == name)
 
@@ -224,11 +244,11 @@ export class ChronosResolver {
     return allClasses
   }
 
-  @FieldResolver(of => [ScheduleDay])
+  @FieldResolver(of => [ScheduleDay], { description: 'Returns the schedule of the group in the given time range.' })
   schedule(
-    @Root()                          group: Group,
-    @Arg("from", { nullable: true }) from : Date | undefined,
-    @Arg("to"  , { nullable: true }) to   : Date | undefined
+    @Root()                                                                                                               group: Group,
+    @Arg("from", { nullable: true, description: 'The start date, or today if no value is provided.' })                    from : Date | undefined,
+    @Arg("to"  , { nullable: true, description: 'The end date, or a week from the start date if no value is provided.' }) to   : Date | undefined,
   ): ScheduleDay[] {
     if (!from) {
       from = new Date()
@@ -237,7 +257,18 @@ export class ChronosResolver {
     if (!to) {
       to = new Date(from.valueOf() + 3_600_000 * 24 * 2)
     }
-    
+
     return group.schedule.filter(x => x.dayStart >= from && x.dayEnd <= to)
+  }
+
+  @Query(returns => ServerStatus, { description: 'Returns the current status of the server.' })
+  status(): ServerStatus {
+    const status = new ServerStatus()
+
+    status.loading = this.db.isLoading
+    status.lastUpdateStartTime = this.db.startedLoading
+    status.lastUpdateEndTime = this.db.finishedLoading
+
+    return status
   }
 }
